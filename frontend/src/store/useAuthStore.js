@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js"
+import toast from "react-hot-toast"
 
 //custom Zustand hook you can use in any React component to access or update auth-related state
 export const useAuthStore = create((set) => ({
@@ -20,6 +21,47 @@ export const useAuthStore = create((set) => ({
         }
         finally {
             set({ isCheckingAuth: false });
+        }
+    },
+
+    signup: async (data) =>{
+        set({isSigningUp: true});
+        try{
+            const res = await axiosInstance.post("/auth/signup", data);
+            set({authUser: res.data});
+            toast.success("Account created successfully");
+        }
+        catch(error){
+            toast.error(error.response.data.message);
+        }
+        finally{
+            set({isSigningUp: false});
+        }
+    },
+
+    logout: async () =>{
+        try{
+            await axiosInstance.post("/auth/logout");
+            set({authUser: null});
+            toast.success("Logged out Successfully");
+        }
+        catch(error){
+            toast.error(error.response.data.message);
+        }
+    },
+
+    login: async (data) =>{
+        set({isLoggingIn: true});
+        try{
+            const res = await axiosInstance.post("/auth/login", data);
+            set({authUser: res.data});
+            toast.success("Logged In successfully");
+        }
+        catch(error){
+            toast.error(error.response.data.message);
+        }
+        finally{
+            set({isLoggingIn: false});
         }
     }
 }))

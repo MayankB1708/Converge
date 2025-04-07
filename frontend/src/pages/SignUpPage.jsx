@@ -43,7 +43,7 @@ const SignUpPage = () => {
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                 <MessageSquare className="w-6 h-6 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold mt-1">Create Account</h1>
+              <h2 className="text-5xl font-bold mt-1">Step Into the Circle</h2>
               <p className="text-base-content/60">Get started with your free account</p>
             </div>
           </div>
@@ -150,3 +150,4 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
+

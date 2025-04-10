@@ -9,7 +9,9 @@ export const useAuthStore = create((set) => ({
     isLoggingIn: false,
     isUpdatingProfile: false,
     isCheckingAuth: true,  //boolean flag indicating whether the app is still checking if the user is authenticated
+    onlineUsers: [],
 
+    
     checkAuth: async () => {
         try {
             const res = await axiosInstance.get("/auth/check");

@@ -4,7 +4,7 @@ import cloudinary from "../lib/cloudinary.js"
 
 export const getUsersForSidebar = async(req,res) => {
     try{
-        const loggedInUSerId = req.user._id;
+        const loggedInUserId = req.user._id;
         const filteredUsers = await User.find({_id: { $ne: loggedInUserId}}).select("-password");
         res.status(200).json(filteredUsers);
     }
@@ -46,7 +46,7 @@ export const sendMessage = async(req,res) =>{
             imageUrl = uploadResponse.secure_url;
         }
 
-        const newMessage = new Messages({
+        const newMessage = new Message({
             senderId,
             receiverId,
             text,
@@ -59,7 +59,7 @@ export const sendMessage = async(req,res) =>{
         res.status(200).json(newMessage);
     }
     catch(error){
-        console.log.error("Error in the sendMessage controller: ",error.message);
+        console.log("Error in the sendMessage controller: ",error.message);
         res.status(500).json({message: "Internal Server Error"});
     }
 

@@ -4,7 +4,7 @@ A real-time chat web application enabling secure one-on-one conversations with d
 
 ## Overview
 
-Converge is a full-stack real-time chat application that enables users to have secure one-on-one conversations. It features a modern UI with dynamic theming options, JWT-based authentication, and end-to-end message delivery via Socket.IO.
+Converge is a full-stack real-time chat application that enables users to have secure one-on-one conversations. It features a modern UI with dynamic theming options, JWT-based authentication, and end to end message delivery in real time using Socket.IO.
 
 ## Features
 
@@ -26,7 +26,7 @@ Converge is a full-stack real-time chat application that enables users to have s
   - Message search functionality
   
 - **Security**
-  - JWT token-based authentication
+  - JWT token-based authentication with HTTP-only cookies
   - Password hashing
   - Protected routes
   - Input validation
@@ -99,8 +99,7 @@ sequenceDiagram
     AuthAPI->>Database: Validate credentials
     Database-->>AuthAPI: User data
     AuthAPI->>AuthAPI: Generate JWT
-    AuthAPI-->>Frontend: Return JWT + user info
-    Frontend->>Frontend: Store JWT in localStorage
+    AuthAPI-->>Frontend: Return JWT in HTTP-only cookie + user info
     Frontend-->>User: Redirect to chat
 ```
 
@@ -134,7 +133,7 @@ sequenceDiagram
 erDiagram
     USER {
         string _id PK
-        string name
+        string fullName
         string email
         string password
         string profilePic
@@ -142,33 +141,18 @@ erDiagram
         date updatedAt
     }
     
-    CHAT {
-        string _id PK
-        string chatName
-        boolean isGroupChat
-        string[] users FK
-        string latestMessage FK
-        string groupAdmin FK
-        date createdAt
-        date updatedAt
-    }
-    
     MESSAGE {
         string _id PK
-        string sender FK
-        string content
-        string chat FK
-        string[] readBy FK
+        string senderId FK
+        string receiverId FK
+        string text
+        string image
         date createdAt
         date updatedAt
     }
     
-    USER ||--o{ CHAT : "participates"
     USER ||--o{ MESSAGE : "sends"
-    CHAT ||--o{ MESSAGE : "contains"
-    USER ||--o{ MESSAGE : "reads"
-    USER ||--o{ CHAT : "administers"
-    MESSAGE ||--|| CHAT : "latest_in"
+    USER ||--o{ MESSAGE : "receives"
 ```
 
 ### Class Diagram
@@ -177,7 +161,7 @@ erDiagram
 classDiagram
     class User {
         +String _id
-        +String name
+        +String fullName
         +String email
         +String password
         +String profilePic
@@ -188,58 +172,29 @@ classDiagram
         +updateProfile()
     }
     
-    class Chat {
-        +String _id
-        +String chatName
-        +Boolean isGroupChat
-        +User[] users
-        +Message latestMessage
-        +User groupAdmin
-        +Date createdAt
-        +Date updatedAt
-        +createChat()
-        +addUserToChat()
-        +removeUserFromChat()
-        +renameGroupChat()
-    }
-    
     class Message {
         +String _id
-        +User sender
-        +String content
-        +Chat chat
-        +User[] readBy
+        +User senderId
+        +User receiverId
+        +String text
+        +String image
         +Date createdAt
         +Date updatedAt
         +sendMessage()
-        +markAsRead()
     }
     
     class AuthController {
-        +register()
+        +signup()
         +login()
-        +verifyToken()
-    }
-    
-    class UserController {
-        +getProfile()
+        +logout()
         +updateProfile()
-        +searchUsers()
-    }
-    
-    class ChatController {
-        +createChat()
-        +fetchChats()
-        +createGroupChat()
-        +renameGroup()
-        +addToGroup()
-        +removeFromGroup()
+        +checkAuth()
     }
     
     class MessageController {
         +sendMessage()
-        +fetchMessages()
-        +markAsRead()
+        +getMessages()
+        +getUsersForSidebar()
     }
     
     class SocketController {
@@ -249,15 +204,10 @@ classDiagram
         +sendMessage()
         +typing()
         +stopTyping()
-        +messageRead()
     }
     
-    User "1" -- "0..*" Chat : participates
     User "1" -- "0..*" Message : sends
-    Chat "1" -- "0..*" Message : contains
-    User "0..*" -- "0..*" Message : reads
-    Chat "0..*" -- "1" User : administeredBy
-    Chat "1" -- "0..1" Message : latestMessage
+    User "1" -- "0..*" Message : receives
 ```
 
 ## API Documentation
@@ -266,34 +216,19 @@ classDiagram
 
 | Method | Endpoint           | Description                  | Request Body                      | Response                          |
 |--------|-------------------|------------------------------|----------------------------------|-----------------------------------|
-| POST   | /api/auth/register | Register a new user          | { name, email, password }        | { _id, name, email, token }       |
-| POST   | /api/auth/login    | Login an existing user       | { email, password }              | { _id, name, email, token }       |
-
-### User Endpoints
-
-| Method | Endpoint           | Description                  | Request Body                      | Response                          |
-|--------|-------------------|------------------------------|----------------------------------|-----------------------------------|
-| GET    | /api/users        | Search for users             | Query params: search             | [{ _id, name, email, pic }]       |
-| GET    | /api/users/:id    | Get a specific user          | -                                | { _id, name, email, pic }         |
-| PUT    | /api/users/profile| Update user profile          | { name, email, pic }             | { _id, name, email, pic }         |
-
-### Chat Endpoints
-
-| Method | Endpoint                | Description                  | Request Body                      | Response                          |
-|--------|------------------------|------------------------------|----------------------------------|-----------------------------------|
-| POST   | /api/chats             | Create/access a chat         | { userId }                       | Chat object                       |
-| GET    | /api/chats             | Get all user chats           | -                                | [Chat objects]                    |
-| POST   | /api/chats/group       | Create a group chat          | { name, users }                  | Group Chat object                 |
-| PUT    | /api/chats/rename      | Rename a group               | { chatId, chatName }             | Group Chat object                 |
-| PUT    | /api/chats/groupadd    | Add user to group            | { chatId, userId }               | Group Chat object                 |
-| PUT    | /api/chats/groupremove | Remove user from group       | { chatId, userId }               | Group Chat object                 |
+| POST   | /api/auth/signup   | Register a new user          | { fullName, email, password }        | { _id, fullName, email } + JWT cookie |
+| POST   | /api/auth/login    | Login an existing user       | { email, password }              | { _id, fullName, email } + JWT cookie |
+| POST   | /api/auth/logout   | Logout user                  | -                                | Success message                   |
+| PUT    | /api/auth/update-profile | Update user profile    | { fullName, email, profilePic }      | { _id, fullName, email, profilePic }  |
+| GET    | /api/auth/check    | Verify authentication        | -                                | { _id, fullName, email }              |
 
 ### Message Endpoints
 
 | Method | Endpoint                | Description                  | Request Body                      | Response                          |
 |--------|------------------------|------------------------------|----------------------------------|-----------------------------------|
-| POST   | /api/messages          | Send a message               | { content, chatId }              | Message object                    |
-| GET    | /api/messages/:chatId  | Get all chat messages        | -                                | [Message objects]                 |
+| GET    | /api/messages/users    | Get users for sidebar        | -                                | [User objects]                    |
+| GET    | /api/messages/:id      | Get messages for a chat      | -                                | [Message objects]                 |
+| POST   | /api/messages/send/:id | Send a message               | { text, image }                  | Message object                    |
 
 ## Installation and Setup
 
@@ -366,25 +301,25 @@ npm start
 The authentication system is built with security and user experience in mind:
 
 1. **User Registration**:
-   - The frontend collects user information through a form (name, email, password).
-   - Passwords are validated for strength on the client-side using regex patterns.
-   - The data is sent to the backend via a POST request to `/api/auth/register`.
+   - The frontend collects user information through a form (fullName, email, password).
+   - Passwords are validated for strength on the client-side using regex patterns (minimum 6 characters).
+   - The data is sent to the backend via a POST request to `/api/auth/signup`.
    - On the server, the password is hashed using bcrypt with a salt factor of 10.
    - The backend checks if the email is already registered before creating a new user.
    - A JWT token is generated using the user's ID and a secret key stored in environment variables.
-   - The token is returned to the client along with user data (excluding password).
+   - The token is set as an HTTP-only cookie and returned to the client along with user data (excluding password).
 
 2. **User Login**:
    - The login form accepts email and password.
    - Credentials are sent to `/api/auth/login` endpoint.
    - The backend retrieves the user record by email.
    - The stored hashed password is compared with the provided password using bcrypt's compare function.
-   - If authentication succeeds, a JWT token is generated and returned to the client.
-   - The frontend stores this token in localStorage and includes it in the Authorization header for subsequent requests.
+   - If authentication succeeds, a JWT token is generated and set as an HTTP-only cookie.
+   - User data (excluding password) is returned to the client.
 
 3. **Authentication Middleware**:
    - Every protected route uses a middleware function that validates the JWT token.
-   - The token is extracted from the Authorization header.
+   - The token is extracted from the HTTP-only cookie.
    - If the token is valid, the user ID is attached to the request object for use in route handlers.
    - Invalid or expired tokens result in 401 Unauthorized responses.
 
@@ -394,55 +329,44 @@ Real-time features are implemented using Socket.IO with a carefully designed eve
 
 1. **Socket Connection Management**:
    - When a user logs in, the frontend establishes a Socket.IO connection.
-   - The JWT token is sent with the connection request for authentication.
+   - The JWT token from the cookie is used for socket authentication.
    - On the server, a socket middleware validates the token before allowing connection.
    - Connected users are tracked in an in-memory map with their socket IDs and user IDs.
    - When users disconnect, they're removed from this tracking system.
 
 2. **Chat Initialization**:
-   - When a user opens a chat, the frontend emits a `joinChat` event with the chat ID.
-   - The server adds the user's socket to a room named after the chat ID.
+   - When a user opens a chat, the frontend emits a `joinChat` event with the user ID.
+   - The server adds the user's socket to a room to enable direct messaging.
    - This room-based system ensures messages are only sent to relevant participants.
 
 3. **Messaging System**:
-   - When a user sends a message, the client emits a `sendMessage` event with message content and chat ID.
+   - When a user sends a message, the client emits a `sendMessage` event with message text and/or image, and recipient ID.
    - The server:
-     - Saves the message to MongoDB with sender, content, chat reference, and timestamp.
-     - Updates the corresponding chat document with the latest message reference.
-     - Emits a `receiveMessage` event to all users in the chat room.
+     - Saves the message to MongoDB with senderId, receiverId, text, and image.
+     - Emits a `receiveMessage` event to the receiver.
    - Recipients' clients listen for `receiveMessage` and update their UI accordingly.
-   - Messages are stored with a `readBy` array to track which users have seen them.
 
 4. **Typing Indicators**:
-   - When a user starts typing, the client emits a `typing` event with the chat ID.
-   - The server broadcasts this to other users in the chat room.
+   - When a user starts typing, the client emits a `typing` event with the recipient ID.
+   - The server broadcasts this to the recipient.
    - When typing stops (detected by debounced input), a `stopTyping` event is emitted.
    - Recipients show and hide the "user is typing" indicator based on these events.
-
-5. **Read Receipts**:
-   - When a message appears in a user's viewport, the frontend emits a `messageRead` event.
-   - The server updates the message document by adding the user to the `readBy` array.
-   - The server then emits a `messageStatusUpdate` event to the sender.
-   - The sender's UI updates to show read status (e.g., changing the checkmark color).
 
 ### Database Integration
 
 The MongoDB integration is structured for efficient real-time operations:
 
 1. **Schema Design**:
-   - The three main models (User, Chat, Message) are designed with references to optimize querying.
-   - The Chat model includes a reference to the latest message, enabling efficient chat list sorting.
+   - User and Message models are designed with references for optimal data organization.
    - Indexes are created on frequently queried fields to improve performance.
 
 2. **Query Optimization**:
-   - Chat list queries use MongoDB aggregation pipeline to populate user details and latest message in a single query.
-   - Message retrieval is paginated, loading only 50 messages at a time with infinite scrolling.
-   - Population depth is controlled to prevent excessive database lookups.
+   - Message retrieval is optimized to efficiently load conversations between users.
+   - User searches use efficient queries to populate the sidebar.
 
 3. **Data Consistency**:
-   - When a message is sent, both the Message collection and the Chat's latestMessage field are updated in a transaction.
-   - User searches use text indexes for efficient partial matching.
-   - Read statuses are updated using MongoDB's `$addToSet` operator to prevent duplicates.
+   - When a message is sent, the Message collection is updated atomically.
+   - User data is protected with proper validation and access controls.
 
 ### User Interface Implementation
 
@@ -485,7 +409,7 @@ Multiple security layers protect user data and communications:
 1. **Password Security**:
    - Passwords are never stored in plain text, only bcrypt hashes.
    - Password reset flows use time-limited tokens sent to verified email addresses.
-   - Password strength requirements are enforced on both client and server.
+   - Password strength requirements enforce a minimum length of 6 characters.
 
 2. **Input Validation**:
    - All user inputs are validated using a combination of frontend and backend validation.
@@ -497,11 +421,12 @@ Multiple security layers protect user data and communications:
    - Socket events are also rate-limited to prevent spam.
 
 4. **Token Management**:
-   - JWTs have an expiration time (24 hours by default).
+   - JWTs are stored in HTTP-only cookies to prevent access by client-side JavaScript.
+   - Cookies have an expiration time (24 hours by default) and secure flags in production.
    - Sensitive operations require token re-validation.
    - Token refresh mechanisms allow for extended sessions without compromising security.
 
 5. **Environmental Security**:
    - All sensitive configuration (database URLs, JWT secrets) is stored in environment variables.
    - Production deployments use HTTPS with proper certificate management.
-   - HTTP-only cookies provide an additional layer of security for token storage in production.
+   - CSRF protection is implemented for cookie-based authentication.

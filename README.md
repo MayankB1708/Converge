@@ -4,7 +4,7 @@ A real-time chat web application enabling secure one-on-one conversations with d
 
 ## Overview
 
-Converge is a full-stack real-time chat application that enables users to have secure one-on-one conversations. It features a modern UI with dynamic theming options, JWT-based authentication, and end to end message delivery in real time using Socket.IO.
+Converge is a full-stack real-time chat application that enables users to have secure one-on-one conversations. It features a modern UI with dynamic theming options, JWT-based authentication, and end [...]
 
 ## Features
 
@@ -35,7 +35,7 @@ Converge is a full-stack real-time chat application that enables users to have s
 
 ### Frontend
 - **React.js** - UI library
-- **Context API** - State management
+- **Zustand** - State management
 - **Axios** - HTTP client for API requests
 - **Socket.IO Client** - Real-time communication
 - **Tailwind CSS** - Utility-first CSS framework
@@ -58,7 +58,7 @@ Converge follows a modern client-server architecture with real-time capabilities
 flowchart TB
     subgraph "Frontend (React)"
         UI[User Interface]
-        ContextAPI[Context API]
+        ZustandStore[Zustand Store]
         SocketClient[Socket.IO Client]
     end
     
@@ -73,9 +73,9 @@ flowchart TB
         MongoDB[(MongoDB)]
     end
     
-    UI <--> ContextAPI
-    ContextAPI <--> SocketClient
-    ContextAPI <-- Axios --> API
+    UI <--> ZustandStore
+    ZustandStore <--> SocketClient
+    ZustandStore <-- Axios --> API
     SocketClient <-- WebSocket --> SocketServer
     API <--> Auth
     API <--> Controllers
@@ -378,18 +378,18 @@ The UI is built with React and enhanced with Tailwind CSS and DaisyUI:
    - Each component has its own CSS module or Tailwind classes for styling.
 
 2. **State Management**:
-   - The Context API creates several contexts:
-     - AuthContext: Manages user authentication state
-     - ChatContext: Handles active chats and messages
-     - SocketContext: Provides socket connection throughout the app
-   - These contexts are provided at the app root level and consumed by relevant components.
+   - Zustand is used for application state management:
+     - authStore: Manages user authentication state
+     - chatStore: Handles active chats and messages
+     - socketStore: Provides socket connection throughout the app
+   - These stores are easily accessible throughout the application with minimal boilerplate code.
    - Local component state is used for UI-specific states like input values and modal visibility.
 
 3. **Theme System**:
    - The theme system leverages DaisyUI's theme attributes.
    - Users can select from predefined themes or customize color schemes.
    - Theme preferences are stored in localStorage and applied on application load.
-   - A ThemeContext provides theme toggling functionality throughout the app.
+   - A theme store in Zustand provides theme toggling functionality throughout the app.
 
 4. **Responsive Design**:
    - The layout uses Tailwind's responsive classes for different screen sizes.
